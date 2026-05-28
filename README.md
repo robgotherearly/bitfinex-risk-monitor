@@ -1,5 +1,9 @@
 # Bitfinex Risk Monitor
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://bitfinex-risk-monitor-htbs2ivv3irsi2rkten5jg.streamlit.app/)
+
+**🔴 Live demo:** https://bitfinex-risk-monitor-htbs2ivv3irsi2rkten5jg.streamlit.app/
+
 A real-time market risk monitoring dashboard for crypto trading pairs, built on the
 **Bitfinex public API**. It tracks live and historical risk metrics across a basket
 of markets, flags limit breaches by severity, and surfaces anomalies for
