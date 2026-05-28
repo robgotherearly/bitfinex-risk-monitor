@@ -1,13 +1,14 @@
 """
 app.py
-
+======
 Live risk-monitoring dashboard. Run with:
 
     streamlit run app.py
 
 Pulls real data from Bitfinex (public API, no key needed). If the API is
 unreachable it falls back to the bundled sample data, so the dashboard always
-renders. Auto-refreshes the live spread and re-evaluates all limits on each run.
+renders. Network calls are cached (60s TTL) so reruns and multiple viewers
+don't hammer Bitfinex's rate-limited REST endpoints.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 import streamlit as st
 
 import config
-from data_fetcher import load_candles, get_live_spread, BitfinexClient
+from data_fetcher import load_candles, get_live_spread
 import risk_engine as re
 import alerts
 import charts
@@ -38,28 +39,50 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("◢ BITFINEX RISK MONITOR")
 
-client = BitfinexClient()
+# --- cached data access ----------------------------------------------------
+# st.cache_data memoises the return value per argument for `ttl` seconds. This
+# keeps the dashboard responsive on rerun (e.g. changing the symbol selector)
+# and prevents repeated hits to Bitfinex's rate-limited REST API. The cached
+# functions create their own client internally, so nothing unhashable is passed.
+@st.cache_data(ttl=60, show_spinner=False)
+def get_enriched(symbol: str):
+    """Fetch + enrich one symbol. Returns (DataFrame, source_label)."""
+    df = re.enrich(load_candles(symbol))
+    return df, df.attrs.get("source", "?")
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def get_spread(symbol: str):
+    """Cached live bid-ask spread (%), or None on failure."""
+    return get_live_spread(symbol)
+
+
+st.title("◢ BITFINEX RISK MONITOR")
 
 # --- evaluate every symbol -------------------------------------------------
 rows, all_alerts, frames = [], [], {}
 for sym in config.SYMBOLS:
-    df = re.enrich(load_candles(sym, client))
+    df, src = get_enriched(sym)
     frames[sym] = df
     snap = re.latest_snapshot(df)
-    spread = get_live_spread(sym, client)
+    spread = get_spread(sym)
     sym_alerts = alerts.evaluate(sym, snap, spread)
     all_alerts += sym_alerts
     sev = ("CRITICAL" if any(a.severity == "CRITICAL" for a in sym_alerts)
            else "WARNING" if sym_alerts else "OK")
-    rows.append((sym, snap, sev, df.attrs.get("source", "?")))
+    rows.append((sym, snap, sev, src))
 
 source = rows[0][3] if rows else "?"
 crit = sum(1 for a in all_alerts if a.severity == "CRITICAL")
 warn = sum(1 for a in all_alerts if a.severity == "WARNING")
-st.caption(f"data source: **{source}**  ·  markets: {len(config.SYMBOLS)}  "
-           f"·  🔴 {crit} critical  ·  🟡 {warn} warning")
+
+head_l, head_r = st.columns([5, 1])
+head_l.caption(f"data source: **{source}**  ·  markets: {len(config.SYMBOLS)}  "
+               f"·  🔴 {crit} critical  ·  🟡 {warn} warning  ·  cache TTL 60s")
+if head_r.button("↻ Refresh"):
+    st.cache_data.clear()
+    st.rerun()
 
 # --- status tiles ----------------------------------------------------------
 cols = st.columns(len(rows))
