@@ -1,0 +1,55 @@
+name: Daily Risk Report
+
+# Runs the risk monitoring pipeline automatically every morning (European
+# business hours) and on demand. Generates the report, uploads it as a
+# downloadable artifact, and escalates via Slack/email if secrets are set.
+
+on:
+  schedule:
+    - cron: "0 7 * * *"     # 07:00 UTC daily
+  workflow_dispatch:         # allows manual "Run workflow" from the Actions tab
+
+jobs:
+  risk-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Prepare offline fallback data
+        run: python generate_sample_data.py
+
+      - name: Run daily risk report
+        continue-on-error: true        # a critical breach exits non-zero; keep the job green
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
+        run: python daily_report.py | tee report_run.log
+
+      - name: Publish run summary
+        if: always()
+        run: |
+          echo "## Daily Risk Report" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat report_run.log >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: risk-report
+          path: reports/risk_report_*.html
+          retention-days: 30
