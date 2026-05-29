@@ -108,5 +108,10 @@ Slack; SMTP_HOST/PORT/USER/PASS + ALERT_EMAIL_TO for email. Unconfigured channel
 are skipped quietly. Runs free on GitHub Actions every morning — see
 .github/workflows/daily-risk-report.yml.
 
+Here is a screenshot from slack.
+Critical breaches are escalated to Slack in real time:
+
+![slack alert](assets/slack_alert.png)
+
 ---
 *Built as a portfolio project. Market data © Bitfinex; sample data is synthetic.*
