@@ -93,5 +93,20 @@ Python · pandas · NumPy · Plotly · Streamlit · Bitfinex REST v2 API
 - Persist the alert log and add an email/Telegram escalation hook.
 - Add unit tests for the risk engine (the pure-function design makes this simple).
 
+## Automated daily risk report
+
+A scheduled pipeline that mirrors a desk's daily routine: check every market
+against the defined limits, produce a report, and escalate breaches.
+
+![daily report](assets/report_preview.png)
+
+    python daily_report.py
+
+Exits non-zero on a critical breach so a scheduler/CI surfaces it. Escalation is
+configured via environment variables (no secrets in code): SLACK_WEBHOOK_URL for
+Slack; SMTP_HOST/PORT/USER/PASS + ALERT_EMAIL_TO for email. Unconfigured channels
+are skipped quietly. Runs free on GitHub Actions every morning — see
+.github/workflows/daily-risk-report.yml.
+
 ---
 *Built as a portfolio project. Market data © Bitfinex; sample data is synthetic.*
