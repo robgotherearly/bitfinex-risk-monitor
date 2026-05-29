@@ -1,6 +1,6 @@
 """
 build_preview.py
-
+================
 Renders a self-contained static HTML snapshot of the dashboard to
 reports/dashboard_preview.html. Useful for a README screenshot or for sharing a
 view of the tool with someone who doesn't want to run Streamlit.
@@ -127,7 +127,7 @@ def main():
 </div></body></html>"""
 
     os.makedirs("reports", exist_ok=True)
-    with open(OUT, "w") as f:
+    with open(OUT, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"Wrote {OUT}  ({crit} critical, {warn} warning)")
 

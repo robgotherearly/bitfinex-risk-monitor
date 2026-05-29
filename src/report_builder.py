@@ -136,6 +136,6 @@ def save_html(html: str, out_dir: str = "reports") -> str:
     dated = os.path.join(out_dir, f"risk_report_{stamp}.html")
     latest = os.path.join(out_dir, "latest_report.html")
     for path in (dated, latest):
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(html)
     return latest
